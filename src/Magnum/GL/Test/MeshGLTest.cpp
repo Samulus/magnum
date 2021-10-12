@@ -182,6 +182,7 @@ struct MeshGLTest: OpenGLTester {
     void addVertexBufferInstancedDouble();
     #endif
     void resetDivisorAfterInstancedDraw();
+    void drawInstancedAttributeSingleInstance();
 
     void multiDraw();
     void multiDrawSparseArrays();
@@ -670,7 +671,8 @@ MeshGLTest::MeshGLTest() {
               #ifndef MAGNUM_TARGET_GLES
               &MeshGLTest::addVertexBufferInstancedDouble,
               #endif
-              &MeshGLTest::resetDivisorAfterInstancedDraw});
+              &MeshGLTest::resetDivisorAfterInstancedDraw,
+              &MeshGLTest::drawInstancedAttributeSingleInstance});
 
     addInstancedTests({&MeshGLTest::multiDraw,
                        &MeshGLTest::multiDrawSparseArrays,
@@ -3698,6 +3700,64 @@ void MeshGLTest::resetDivisorAfterInstancedDraw() {
 
         CORRADE_COMPARE(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 48);
     }
+}
+
+void MeshGLTest::drawInstancedAttributeSingleInstance() {
+    #ifndef MAGNUM_TARGET_GLES
+    if(!Context::current().isExtensionSupported<Extensions::ARB::draw_instanced>())
+        CORRADE_SKIP(Extensions::ARB::draw_instanced::string() << "is not supported.");
+    if(!Context::current().isExtensionSupported<Extensions::ARB::instanced_arrays>())
+        CORRADE_SKIP(Extensions::ARB::instanced_arrays::string() << "is not supported.");
+    #elif defined(MAGNUM_TARGET_GLES2)
+    #ifndef MAGNUM_TARGET_WEBGL
+    if(!Context::current().isExtensionSupported<Extensions::ANGLE::instanced_arrays>() &&
+       !Context::current().isExtensionSupported<Extensions::EXT::instanced_arrays>() &&
+       !Context::current().isExtensionSupported<Extensions::NV::instanced_arrays>())
+        CORRADE_SKIP("Required extension is not supported.");
+    #else
+    if(!Context::current().isExtensionSupported<Extensions::ANGLE::instanced_arrays>())
+        CORRADE_SKIP(Extensions::ANGLE::instanced_arrays::string() << "is not supported.");
+    #endif
+    #endif
+
+    typedef Attribute<0, Float> Attribute;
+
+    const Float data[]{
+        Math::unpack<Float, UnsignedByte>(96)
+    };
+    Buffer buffer;
+    buffer.setData(data, BufferUsage::StaticDraw);
+
+    Renderbuffer renderbuffer;
+    renderbuffer.setStorage(
+        #ifndef MAGNUM_TARGET_GLES2
+        RenderbufferFormat::RGBA8,
+        #else
+        RenderbufferFormat::RGBA4,
+        #endif
+        Vector2i(1));
+    Framebuffer framebuffer{{{}, Vector2i(1)}};
+    framebuffer.attachRenderbuffer(Framebuffer::ColorAttachment{0}, renderbuffer)
+               .bind();
+
+    FloatShader shader{"float", "vec4(valueInterpolated, 0.0, 0.0, 0.0)"};
+
+    MAGNUM_VERIFY_NO_GL_ERROR();
+
+    /* Create a mesh with (implicitly) one instance and the buffer added as
+       instanced. Drawing it 16 times should always draw 96 with no error.
+       On ANGLE w/o the "angle-instanced-attributes-always-draw-instanced"
+       workaround this would trigger a validation error where it would complain
+       that the 4-byte buffer is not large enough to draw 16 vertices. */
+    Mesh mesh;
+    mesh.addVertexBufferInstanced(buffer, 1, 0, Attribute{})
+        .setPrimitive(MeshPrimitive::Points)
+        .setCount(16);
+    shader.draw(mesh);
+
+    MAGNUM_VERIFY_NO_GL_ERROR();
+
+    CORRADE_COMPARE(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 96);
 }
 
 struct MultiDrawShader: AbstractShaderProgram {

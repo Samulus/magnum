@@ -123,6 +123,10 @@ See also:
 -   A new @cpp "angle-chatty-shader-compiler" @ce workaround for silencing
     useless linker output on ANGLE. See @ref opengl-workarounds for more
     information.
+-   A new @cpp "angle-instanced-attributes-always-draw-instanced" @ce
+    workaround for ANGLE's draw validation bug, where it complained about
+    instanced buffers being too small when drawing such mesh as non-instanced.
+    See @ref opengl-workarounds for more information.
 
 @subsubsection changelog-latest-new-math Math library
 
