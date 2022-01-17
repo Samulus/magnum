@@ -265,15 +265,21 @@ Trade::MeshData interleave(Trade::MeshData&& data, const Containers::ArrayView<c
     Containers::Array<char> indexData;
     Trade::MeshIndexData indices;
     if(data.isIndexed()) {
-        /* If we can steal the data, do it */
-        if(data.indexDataFlags() & Trade::DataFlag::Owned) {
+        const std::size_t indexTypeSize = meshIndexTypeSize(data.indexType());
+        /* If we can steal the data and it's either tightly packed or we're
+           allowed to preserve a strided layout, do it */
+        if((data.indexDataFlags() & Trade::DataFlag::Owned) && (data.indexStride() == Int(indexTypeSize) || (flags & InterleaveFlag::PreserveStridedIndices))) {
             indices = Trade::MeshIndexData{data.indices()};
             indexData = data.releaseIndexData();
+
+        /* Otherwise make a copy */
         } else {
-            indexData = Containers::Array<char>{data.indexData().size()};
-            Utility::copy(data.indexData(), indexData);
-            indices = Trade::MeshIndexData{data.indexType(),
-                Containers::ArrayView<const void>{indexData + data.indexOffset(), data.indices().size()[0]*data.indices().size()[1]}};
+            indexData = Containers::Array<char>{NoInit, data.indexCount()*indexTypeSize};
+            Containers::StridedArrayView2D<char> out{indexData,
+                {data.indexCount(), indexTypeSize},
+                {std::ptrdiff_t(indexTypeSize), 1}};
+            indices = Trade::MeshIndexData{out};
+            Utility::copy(data.indices(), out);
         }
     }
 
