@@ -264,7 +264,15 @@ Trade::MeshData interleave(Trade::MeshData&& data, const Containers::ArrayView<c
     Containers::Array<char> indexData;
     Trade::MeshIndexData indices;
     if(data.isIndexed()) {
-        const std::size_t indexTypeSize = meshIndexTypeSize(data.indexType());
+        const MeshIndexType indexType = data.indexType();
+        /** @todo this could theoretically get allowed if PreserveStridedIndices
+            works also for non-rvalue (non-ownership-transfer) cases, but i
+            need to figure out the consequences and use cases */
+        CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(indexType),
+            "MeshTools::interleave(): mesh has an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(indexType)),
+            (Trade::MeshData{MeshPrimitive{}, 0}));
+
+        const std::size_t indexTypeSize = meshIndexTypeSize(indexType);
         /* If we can steal the data and it's either tightly packed or we're
            allowed to preserve a strided layout, do it */
         if((data.indexDataFlags() & Trade::DataFlag::Owned) && (data.indexStride() == Int(indexTypeSize) || (flags & InterleaveFlag::PreserveStridedIndices))) {

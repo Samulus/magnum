@@ -85,6 +85,7 @@ struct InterleaveTest: Corrade::TestSuite::Tester {
 
     void interleaveMeshData();
     void interleaveMeshDataIndexed();
+    void interleaveMeshDataImplementationSpecificIndexType();
     void interleaveMeshDataImplementationSpecificVertexFormat();
     void interleaveMeshDataExtra();
     void interleaveMeshDataExtraEmpty();
@@ -165,6 +166,7 @@ InterleaveTest::InterleaveTest() {
 
               &InterleaveTest::interleaveMeshData,
               &InterleaveTest::interleaveMeshDataIndexed,
+              &InterleaveTest::interleaveMeshDataImplementationSpecificIndexType,
               &InterleaveTest::interleaveMeshDataImplementationSpecificVertexFormat,
               &InterleaveTest::interleaveMeshDataExtra,
               &InterleaveTest::interleaveMeshDataExtraEmpty,
@@ -1201,6 +1203,23 @@ void InterleaveTest::interleaveMeshDataIndexed() {
     CORRADE_COMPARE_AS(interleaved.attribute<Vector2>(Trade::MeshAttribute::Position),
         Containers::stridedArrayView(positions),
         TestSuite::Compare::Container);
+}
+
+void InterleaveTest::interleaveMeshDataImplementationSpecificIndexType() {
+    #ifdef CORRADE_NO_ASSERT
+    CORRADE_SKIP("CORRADE_NO_ASSERT defined, can't test assertions");
+    #endif
+
+    Trade::MeshData data{MeshPrimitive::Points,
+        nullptr, Trade::MeshIndexData{meshIndexTypeWrap(0xcaca), Containers::StridedArrayView1D<const void>{}},
+        nullptr, {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position, VertexFormat::Vector2, nullptr}
+        }};
+
+    std::ostringstream out;
+    Error redirectError{&out};
+    MeshTools::interleave(data);
+    CORRADE_COMPARE(out.str(), "MeshTools::interleave(): mesh has an implementation-specific index type 0xcaca\n");
 }
 
 void InterleaveTest::interleaveMeshDataImplementationSpecificVertexFormat() {

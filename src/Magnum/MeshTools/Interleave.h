@@ -368,10 +368,13 @@ copy of all data even if @p data is already interleaved and needs no change,
 use @ref interleave(Trade::MeshData&&, Containers::ArrayView<const Trade::MeshAttributeData>, InterleaveFlags)
 to avoid that copy.
 
-All attributes in both @p data and @p extra are expected to not have an
-implementation-specific format, except for @p data attributes in case @p data
-is already interleaved, then the layout is untouched.
-@see @ref isInterleaved(), @ref isVertexFormatImplementationSpecific(),
+An index buffer, if present in @p data, is expected to not have an
+implementation-specific index type. All attributes in both @p data and @p extra
+are expected to not have an implementation-specific format, except for @p data
+attributes in case @p data is already interleaved, then the layout is
+untouched.
+@see @ref isInterleaved(), @ref isMeshIndexTypeImplementationSpecific(),
+    @ref isVertexFormatImplementationSpecific(),
     @ref Trade::MeshData::attributeData()
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData interleave(const Trade::MeshData& data, Containers::ArrayView<const Trade::MeshAttributeData> extra = {}, InterleaveFlags flags = InterleaveFlag::PreserveInterleavedAttributes);
